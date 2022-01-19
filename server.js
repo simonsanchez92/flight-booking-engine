@@ -20,7 +20,7 @@ app.get("/api/autocomplete", async (req, res, next) => {
       keyword: query.keyword,
       subType: Amadeus.location.city,
     });
-    console.log(data);
+
     res.json(data);
   } catch (err) {
     console.error(err.response);
@@ -30,31 +30,19 @@ app.get("/api/autocomplete", async (req, res, next) => {
 
 app.get("/api/search", async (req, res, next) => {
   try {
-    // const { query } = req;
-    // const { data } = await amadeus.shopping.flightOffersSearch.get({
-    //   originLocationCode: query.origin,
-    //   destinationLocationCode: query.destination,
-    //   departureDate: query.departureDate,
-    //   adults: query.adults,
-    //   children: query.children,
-    //   infants: query.infants,
-    //   travelClass: query.travelClass,
-    //   ...(query.returnDate ? { returnDate: query.returnDate } : {}),
-    // });
+    const { query } = req;
+    const { data } = await amadeus.shopping.flightOffersSearch.get({
+      originLocationCode: query.origin,
+      destinationLocationCode: query.destination,
+      departureDate: query.departureDate,
+      adults: query.adults,
+      children: query.children,
+      infants: query.infants,
+      travelClass: query.travelClass,
+      ...(query.returnDate ? { returnDate: query.returnDate } : {}),
+    });
 
-    amadeus.shopping.flightOffersSearch
-      .get({
-        originLocationCode: "BOS",
-        destinationLocationCode: "LON",
-        departureDate: "2022-08-08",
-        adults: "2",
-      })
-      .then(function (data) {
-        res.json(data);
-      })
-      .catch(function (responseError) {
-        console.log(JSON.stringify(responseError));
-      });
+    res.json(data);
   } catch (err) {
     console.error(err.response);
     res.json([]);

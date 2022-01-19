@@ -5,19 +5,39 @@ interface CityCode {
   iataCode: string;
 }
 
+interface Flight {
+  price: { total: Number; currency: string };
+  itineraries: [
+    {
+      segments: [
+        { arrival: { iataCode: string }; departure: { iataCode: string } }
+      ];
+    }
+  ];
+}
+
 const SearchForm = () => {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-
-  // const [options, setOptions] = useState([]);
 
   const [originCityCodes, setOriginCityCodes] = useState([]);
   const [destinationCityCodes, setDestinationCityCodes] = useState([]);
 
   const [flightType, setFlightType] = useState("round-trip");
 
+  const [departureDate, setDepartureDate] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+
+  const [travelClass, setTravelClass] = useState("ECONOMY");
+
+  const [adultPassengers, setAdultPassengers] = useState(1);
+  const [childrenPassengers, setChildrenPassengers] = useState(0);
+  const [infantPassengers, setInfantPassengers] = useState(0);
+
+  const [searchData, setSearchData] = useState([]);
+
   let autocompleteTimeoutHandle: any = 0;
-  const autocomplete = (input: any, originOrDestinyInput: string) => {
+  const autocomplete = (input: any, originOrDesInput: string) => {
     let cityCodes: any = [];
 
     clearTimeout(autocompleteTimeoutHandle);
@@ -33,7 +53,7 @@ const SearchForm = () => {
 
         data.forEach(
           (entry: {
-            address: any;
+            address: string;
             analytics: any;
             detailedName: any;
             geoCode: any;
@@ -51,11 +71,11 @@ const SearchForm = () => {
             };
             cityCodes.push(newCityCode);
 
-            console.log(newCityCode);
+            // console.log(newCityCode);
             // cityCodes[entry.name.toLowerCase()] = entry.iataCode;
           }
         );
-        originOrDestinyInput === "origin"
+        originOrDesInput === "origin"
           ? setOriginCityCodes(cityCodes)
           : setDestinationCityCodes(cityCodes);
       } catch (err) {
@@ -82,18 +102,72 @@ const SearchForm = () => {
     setFlightType(e.currentTarget.value);
   };
 
-  const search = async (key: keyof CityCode) => {
-    const returns = flightType === "round-trip";
-    const params = new URLSearchParams({
-      origin: originCityCodes.filter(
-        (c: CityCode) => c.name === "barcelona"
-      )[0]["name"],
-    });
+  const search = async () => {
+    try {
+      const returns = flightType === "round-trip";
+      const params = new URLSearchParams({
+        origin: originCityCodes.filter((c: CityCode) => c.name === origin)[0][
+          "iataCode"
+        ],
+        destination: destinationCityCodes.filter(
+          (c: CityCode) => c.name === destination
+        )[0]["iataCode"],
+
+        departureDate: departureDate,
+        adults: adultPassengers.toString(),
+        children: childrenPassengers.toString(),
+        infants: infantPassengers.toString(),
+        travelClass: travelClass,
+
+        ...(returns ? { returnDate: returnDate } : {}),
+      });
+
+      const response = await fetch(
+        `http://localhost:4000/api/search?${params}`
+      );
+      const data = await response.json();
+
+      setSearchData(data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const [formattedDate] = date.toISOString().split("T");
+    return formattedDate;
+  };
+
+  const handleDepartureDateChange = (e: React.FormEvent<HTMLInputElement>) => {
+    setDepartureDate(e.currentTarget.value);
+  };
+  const handleReturnDateChange = (e: React.FormEvent<HTMLInputElement>) => {
+    setReturnDate(e.currentTarget.value);
+  };
+
+  const handleAdultPassengerChange = (e: React.FormEvent<HTMLInputElement>) => {
+    setAdultPassengers(+e.currentTarget.value);
+  };
+
+  const handleChildrenPassengerChange = (
+    e: React.FormEvent<HTMLInputElement>
+  ) => {
+    setChildrenPassengers(+e.currentTarget.value);
+  };
+
+  const handleInfantPassengerChange = (
+    e: React.FormEvent<HTMLInputElement>
+  ) => {
+    setInfantPassengers(+e.currentTarget.value);
+  };
+
+  const handleTravelClassChange = (e: React.FormEvent<HTMLSelectElement>) => {
+    setTravelClass(e.currentTarget.value);
   };
 
   useEffect(() => {
-    console.log(originCityCodes);
-  }, [origin, destination, originCityCodes, destinationCityCodes]);
+    console.log(searchData);
+  }, [origin, destination, originCityCodes, destinationCityCodes, searchData]);
 
   return (
     <div className="container-sm ">
@@ -209,6 +283,7 @@ const SearchForm = () => {
                         <i className="bi-calendar"></i>
                       </span>
                       <input
+                        onChange={(e) => handleDepartureDateChange(e)}
                         type="date"
                         className="form-control"
                         id="departure-date-input"
@@ -233,6 +308,7 @@ const SearchForm = () => {
                         className="form-control"
                         id="return-date-input"
                         aria-describedby="return-date-label"
+                        onChange={(e) => handleReturnDateChange(e)}
                       />
                     </div>
                   </div>
@@ -255,6 +331,7 @@ const SearchForm = () => {
                       aria-describedby="travel-class-select"
                       id="travel-class-select"
                       className="form-select"
+                      onChange={(e) => handleTravelClassChange(e)}
                     >
                       <option value="ECONOMY">Economy</option>
                       <option value="PREMIUM_ECONOMY">Premium Economy</option>
@@ -277,6 +354,8 @@ const SearchForm = () => {
                         className="form-control"
                         id="adults-input"
                         aria-describedby="adults-label"
+                        value={adultPassengers}
+                        onChange={(e) => handleAdultPassengerChange(e)}
                       />
                     </div>
                     <span className="form-text" id="adults-label">
@@ -297,6 +376,8 @@ const SearchForm = () => {
                         className="form-control"
                         id="children-input"
                         aria-describedby="children-label"
+                        value={childrenPassengers}
+                        onChange={(e) => handleChildrenPassengerChange(e)}
                       />
                     </div>
                     <span className="form-text" id="children-label">
@@ -317,6 +398,8 @@ const SearchForm = () => {
                         className="form-control"
                         id="infants-input"
                         aria-describedby="infants-label"
+                        value={infantPassengers}
+                        onChange={(e) => handleInfantPassengerChange(e)}
                       />
                     </div>
                     <span className="form-text" id="infants-label">
@@ -329,7 +412,11 @@ const SearchForm = () => {
           </div>
         </div>
       </div>
-      <button className="w-100 btn btn-primary" id="search-button">
+      <button
+        className="w-100 btn btn-primary"
+        id="search-button"
+        onClick={() => search()}
+      >
         Search
       </button>
       <div
@@ -343,7 +430,45 @@ const SearchForm = () => {
         </div>
       </div>
 
-      <ul id="search-results" className="list-group mb-4"></ul>
+      <ul id="search-results" className="list-group mb-4">
+        {searchData.length === 0 ? (
+          <h2>No results</h2>
+        ) : (
+          searchData.map(({ price, itineraries }: Flight, i) => (
+            <li
+              key={i}
+              className="flex-column flex-sm-row list-group-item d-flex justify-content-between align-items-sm-center"
+            >
+              {itineraries.map((itinerary, index) => {
+                return (
+                  <div className="flex-column flex-1 m-2 d-flex">
+                    <small className="text-muted">
+                      {index === 0 ? "Outbound" : "Return"}
+                    </small>
+
+                    {itinerary.segments.map(
+                      ({ arrival, departure }, i, segments) => {
+                        return i === segments.length - 1 ? (
+                          <span className="fw-bold">
+                            {[departure.iataCode, arrival.iataCode].join(" → ")}
+                          </span>
+                        ) : (
+                          <span className="fw-bold">
+                            {[departure.iataCode].join(" → ")}
+                          </span>
+                        );
+                      }
+                    )}
+                  </div>
+                );
+              })}
+              <span className="bg-primary rounded-pill m-2 badge fs-6">
+                {price.total} {price.currency}
+              </span>
+            </li>
+          ))
+        )}
+      </ul>
     </div>
   );
 };
