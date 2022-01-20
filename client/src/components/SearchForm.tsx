@@ -1,5 +1,8 @@
 import React, { useState, useEffect, Fragment } from "react";
 
+import Moment from "react-moment";
+import moment from "moment";
+
 interface CityCode {
   name: string;
   iataCode: string;
@@ -12,6 +15,7 @@ interface Flight {
       segments: [
         { arrival: { iataCode: string }; departure: { iataCode: string } }
       ];
+      duration: string;
     }
   ];
 }
@@ -36,6 +40,18 @@ const SearchForm = () => {
 
   const [searchData, setSearchData] = useState([]);
 
+  const formatDuration = (duration: any) => {
+    const [, hours, minutes] = duration.match(/(\d+)H(\d+)?/);
+
+    console.log({ hours, minutes });
+    let totalHours = hours !== undefined ? hours : 0;
+    let totalMinutes = minutes !== undefined ? minutes : 0;
+
+    return { totalHours, totalMinutes };
+  };
+
+  console.log(formatDuration("PT5H30M"));
+
   let autocompleteTimeoutHandle: any = 0;
   const autocomplete = (input: any, originOrDesInput: string) => {
     let cityCodes: any = [];
@@ -48,8 +64,6 @@ const SearchForm = () => {
           `http://localhost:4000/api/autocomplete?${params}`
         );
         const data: [] = await response.json();
-
-        console.log(data);
 
         data.forEach(
           (entry: {
@@ -89,12 +103,12 @@ const SearchForm = () => {
   const testing = (e: React.FormEvent<HTMLInputElement>): void => {
     if (e.currentTarget.id === "origin-input") {
       setOrigin(e.currentTarget.value);
-      autocomplete(e.currentTarget.value, "origin");
+      debounce(autocomplete(e.currentTarget.value, "origin"));
     }
 
     if (e.currentTarget.id === "destination-input") {
       setDestination(e.currentTarget.value);
-      autocomplete(e.currentTarget.value, "destiny");
+      debounce(autocomplete(e.currentTarget.value, "destiny"));
     }
   };
 
@@ -133,10 +147,17 @@ const SearchForm = () => {
     }
   };
 
-  const formatDate = (date: Date) => {
-    const [formattedDate] = date.toISOString().split("T");
-    return formattedDate;
+  const debounce = (func: any, timeout = 500) => {
+    let timer: any;
+    return (...args: any[]) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        func.apply(this, args);
+      }, timeout);
+    };
   };
+
+  // const processChange = debounce(() => autocomplete());
 
   const handleDepartureDateChange = (e: React.FormEvent<HTMLInputElement>) => {
     setDepartureDate(e.currentTarget.value);
@@ -167,7 +188,7 @@ const SearchForm = () => {
 
   useEffect(() => {
     console.log(searchData);
-  }, [origin, destination, originCityCodes, destinationCityCodes, searchData]);
+  }, [searchData]);
 
   return (
     <div className="container-sm ">
@@ -232,6 +253,7 @@ const SearchForm = () => {
                     placeholder="Location"
                     aria-describedby="destination-label"
                     list="destination-options"
+                    autoComplete="off"
                   />
                   <datalist id="destination-options">
                     {destinationCityCodes.length >= 1 ? (
@@ -441,24 +463,29 @@ const SearchForm = () => {
             >
               {itineraries.map((itinerary, index) => {
                 return (
-                  <div className="flex-column flex-1 m-2 d-flex">
+                  <div className="flex-column flex-1 m-2 d-flex" key={index}>
                     <small className="text-muted">
                       {index === 0 ? "Outbound" : "Return"}
                     </small>
 
-                    {itinerary.segments.map(
-                      ({ arrival, departure }, i, segments) => {
-                        return i === segments.length - 1 ? (
-                          <span className="fw-bold">
+                    {itinerary.segments.flatMap(
+                      ({ arrival, departure }, index, segments) => {
+                        console.log({ index, segments });
+                        return index === segments.length - 1 ? (
+                          <span className="fw-bold" key={index}>
                             {[departure.iataCode, arrival.iataCode].join(" → ")}
                           </span>
                         ) : (
-                          <span className="fw-bold">
-                            {[departure.iataCode].join(" → ")}
+                          <span className="fw-bold" key={index}>
+                            {[departure.iataCode, arrival.iataCode].join(" → ")}
                           </span>
                         );
                       }
                     )}
+                    {/* <div>
+                      {formatDuration(itinerary.duration).totalHours || 0}h{" "}
+                      {formatDuration(itinerary.duration).totalMinutes || 0}m
+                    </div> */}
                   </div>
                 );
               })}
